@@ -1,2 +1,3 @@
-# AI-Travel-Itinerary-Planner
+AI-Travel-Itinerary-Planner
 AI Travel Itinerary Planner  An AI-powered web application that generates customized, day-wise travel itineraries based on user inputs such as destination, duration, travel style, budget, and personal preferences.  Built as a 1st-semester BCA project using HTML, CSS, and JavaScript.
+A major problem i faced was API key security. Because this is a HTML/CSS/JavaScript project running directly in the browser,entering my Gemini API key inside the script would expose it publicly on GitHub and in the page source. To hide the key, i would need a backend server like Node.js, which is outside our 1st-semester syllabus. As a temporary solution i added the google gemini api key section so that client can add his personal api key. Thank you 
