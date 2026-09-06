@@ -1,0 +1,282 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Travel Itinerary Planner</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f0f2f5; color: #333; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 25px; }
+        header h1 { color: #1a73e8; margin-bottom: 5px; }
+        .card { background: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+        .form-row { display: flex; gap: 15px; }
+        .form-row .form-group { flex: 1; }
+        button { background-color: #1a73e8; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; }
+        button:hover { background-color: #1557b0; }
+        button:disabled { background-color: #a0c3ff; cursor: not-allowed; }
+        .btn-secondary { background-color: #5f6368; margin-top: 10px; }
+        .btn-secondary:hover { background-color: #3c4043; }
+        .btn-danger { background-color: #d93025; margin-top: 10px; }
+        .btn-danger:hover { background-color: #a50e0e; }
+        .error-message { color: #d93025; background-color: #fce8e6; padding: 10px; border-radius: 5px; margin-bottom: 15px; display: none; }
+        .day-card { background: #f8f9fa; border-left: 4px solid #1a73e8; padding: 15px; margin-bottom: 15px; border-radius: 0 5px 5px 0; }
+        .day-title { font-size: 18px; font-weight: bold; color: #1a73e8; margin-bottom: 8px; }
+        .destination-banner { width: 100%; height: 250px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; }
+        .button-group { display: flex; gap: 10px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>AI Travel Itinerary Planner</h1>
+        <p>Plan your perfect trip with Gemini AI</p>
+    </header>
+
+    <div class="card">
+        <div id="error-box" class="error-message"></div>
+
+        <form id="itinerary-form">
+            <div class="form-group">
+                <label for="api-key">Gemini API Key</label>
+                <input type="password" id="api-key" placeholder="Saved automatically on first generation">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="destination">Destination</label>
+                    <input type="text" id="destination" placeholder="e.g. Paris, Tokyo, Goa" required>
+                </div>
+                <div class="form-group">
+                    <label for="days">Number of Days</label>
+                    <input type="number" id="days" min="1" max="7" value="3" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="budget">Budget Level</label>
+                    <select id="budget">
+                        <option value="Budget">Budget</option>
+                        <option value="Moderate" selected>Moderate</option>
+                        <option value="Luxury">Luxury</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="style">Travel Style</label>
+                    <select id="style">
+                        <option value="Solo">Solo</option>
+                        <option value="Family" selected>Family</option>
+                        <option value="Friends">Friends</option>
+                        <option value="Couple">Couple</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="interests">Interests & Preferences</label>
+                <input type="text" id="interests" placeholder="e.g. Beaches, Historical Sites, Food, Museums">
+            </div>
+
+            <button type="submit" id="generate-btn">Generate Itinerary</button>
+        </form>
+    </div>
+
+    <div id="result-card" class="card hidden">
+        <img id="destination-image" class="destination-banner" src="" alt="Destination View">
+        <h2 id="plan-title" style="margin-bottom: 15px;"></h2>
+        <div id="days-container"></div>
+
+        <div class="button-group">
+            <button id="edit-btn" class="btn-secondary">Edit Inputs</button>
+            <button id="save-btn" style="background-color: #1e8e3e;">Save Locally</button>
+            <button id="regenerate-btn" class="btn-secondary">Regenerate</button>
+        </div>
+    </div>
+
+    <div id="saved-card" class="card hidden">
+        <h2>Saved Itinerary</h2>
+        <p id="saved-status" style="margin-top: 10px; color: #1e8e3e; font-weight: bold;"></p>
+        <div id="saved-content" style="margin-top: 10px;"></div>
+        <button id="clear-btn" class="btn-danger">Clear Saved Itinerary</button>
+    </div>
+</div>
+
+<script>
+    // Paste your personal Gemini API key inside the quotes below if you want it hardcoded
+    const DEFAULT_API_KEY = "YOUR_GEMINI_API_KEY_HERE";
+
+    const form = document.getElementById('itinerary-form');
+    const apiKeyInput = document.getElementById('api-key');
+    const errorBox = document.getElementById('error-box');
+    const resultCard = document.getElementById('result-card');
+    const planTitle = document.getElementById('plan-title');
+    const daysContainer = document.getElementById('days-container');
+    const destinationImage = document.getElementById('destination-image');
+    const savedCard = document.getElementById('saved-card');
+    const savedContent = document.getElementById('saved-content');
+    const savedStatus = document.getElementById('saved-status');
+    const generateBtn = document.getElementById('generate-btn');
+
+    let currentItineraryData = null;
+
+    window.onload = function() {
+        // Auto-fill stored key from LocalStorage or the default constant variable
+        const storedKey = localStorage.getItem('gemini_api_key') || DEFAULT_API_KEY;
+        if (storedKey && storedKey !== "YOUR_GEMINI_API_KEY_HERE") {
+            apiKeyInput.value = storedKey;
+        }
+        loadSavedItinerary();
+    };
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await handleItineraryGeneration();
+    });
+
+    document.getElementById('regenerate-btn').addEventListener('click', async function() {
+        await handleItineraryGeneration();
+    });
+
+    document.getElementById('edit-btn').addEventListener('click', function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    document.getElementById('save-btn').addEventListener('click', function() {
+        if (currentItineraryData) {
+            localStorage.setItem('saved_trip', JSON.stringify(currentItineraryData));
+            savedStatus.innerText = 'Trip successfully saved to LocalStorage!';
+            renderSavedItinerary(currentItineraryData);
+        }
+    });
+
+    document.getElementById('clear-btn').addEventListener('click', function() {
+        localStorage.removeItem('saved_trip');
+        savedCard.classList.add('hidden');
+    });
+
+    async function handleItineraryGeneration() {
+        errorBox.style.display = 'none';
+        
+        let apiKey = apiKeyInput.value.trim();
+        if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY_HERE") {
+            apiKey = localStorage.getItem('gemini_api_key');
+        }
+
+        const destination = document.getElementById('destination').value.trim();
+        const days = parseInt(document.getElementById('days').value);
+        const budget = document.getElementById('budget').value;
+        const style = document.getElementById('style').value;
+        const interests = document.getElementById('interests').value.trim();
+
+        if (!apiKey) {
+            showError("Please enter a valid Gemini API Key.");
+            return;
+        }
+        if (!destination || days < 1) {
+            showError("Please enter a valid destination and number of days.");
+            return;
+        }
+
+        // Store API key locally so user doesn't need to enter it again
+        localStorage.setItem('gemini_api_key', apiKey);
+
+        generateBtn.innerText = "Generating Itinerary with AI...";
+        generateBtn.disabled = true;
+
+        try {
+            const apiResponse = await fetchGeminiItinerary(apiKey, destination, days, budget, style, interests);
+            currentItineraryData = apiResponse;
+            displayItinerary(apiResponse);
+        } catch (err) {
+            showError("API Error: " + err.message);
+        } finally {
+            generateBtn.innerText = "Generate Itinerary";
+            generateBtn.disabled = false;
+        }
+    }
+
+    async function fetchGeminiItinerary(apiKey, dest, days, budget, style, interests) {
+        const prompt = `Generate a detailed ${days}-day travel itinerary for ${dest}. Budget: ${budget}, Style: ${style}, Preferences: ${interests || 'General sightseeing'}.
+Return a JSON object containing an "itinerary" array where each item has "day" (number) and "plan" (string detailing Morning, Afternoon, Evening).`;
+
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json"
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error?.message || `HTTP ${response.status} Failed. Verify API Key.`);
+        }
+
+        const data = await response.json();
+        const rawText = data.candidates[0].content.parts[0].text;
+        const parsedData = JSON.parse(rawText);
+
+        return {
+            destination: dest,
+            days: days,
+            budget: budget,
+            style: style,
+            imageUrl: `https://picsum.photos/seed/${encodeURIComponent(dest)}/800/250`,
+            itinerary: parsedData.itinerary
+        };
+    }
+
+    function displayItinerary(data) {
+        planTitle.innerText = `${data.days}-Day Itinerary for ${data.destination} (${data.budget} Budget - ${data.style})`;
+        destinationImage.src = data.imageUrl;
+        daysContainer.innerHTML = '';
+
+        data.itinerary.forEach(item => {
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'day-card';
+            dayDiv.innerHTML = `
+                <div class="day-title">Day ${item.day}</div>
+                <p style="white-space: pre-line;">${item.plan}</p>
+            `;
+            daysContainer.appendChild(dayDiv);
+        });
+
+        resultCard.classList.remove('hidden');
+        resultCard.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function loadSavedItinerary() {
+        const data = localStorage.getItem('saved_trip');
+        if (data) {
+            const parsed = JSON.parse(data);
+            renderSavedItinerary(parsed);
+        }
+    }
+
+    function renderSavedItinerary(data) {
+        savedContent.innerHTML = `
+            <h3>${data.days}-Day Trip to ${data.destination}</h3>
+            <p><strong>Preferences:</strong> ${data.budget} | ${data.style}</p>
+        `;
+        savedCard.classList.remove('hidden');
+    }
+
+    function showError(msg) {
+        errorBox.innerText = msg;
+        errorBox.style.display = 'block';
+    }
+</script>
+</body>
+</html>
